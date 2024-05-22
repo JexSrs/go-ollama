@@ -101,7 +101,7 @@ func (o *Ollama) Do(path string, data interface{}, streamFunc func(b []byte)) ([
 	buf := make([]byte, 1024)
 	for {
 		n, err := resp.Body.Read(buf)
-		if err != nil && err == io.EOF {
+		if err != nil && err != io.EOF {
 			return nil, err
 		}
 
