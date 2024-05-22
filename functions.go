@@ -478,10 +478,6 @@ func (o *Ollama) newGenerateEmbeddingsFunc() GenerateEmbeddingsFunc {
 			f(&req)
 		}
 
-		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
-		}
-
 		body, err := o.Do("/api/embeddings", req, 0, nil)
 		if err != nil {
 			return nil, err
