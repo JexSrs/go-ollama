@@ -98,6 +98,10 @@ func (o *Ollama) newChatFunc() ChatFunc {
 			req.Stream = pointer(false)
 		}
 
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
+		}
+
 		// Include chat history or create a new chat
 		if chatId != nil {
 			chat := o.chats[*chatId]
@@ -185,6 +189,10 @@ func (o *Ollama) newGenerateFunc() GenerateFunc {
 			req.Stream = pointer(false)
 		}
 
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
+		}
+
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
@@ -261,6 +269,10 @@ func (o *Ollama) newCreateModelFunc() CreateModelFunc {
 		req := ModelFileBuilder{}
 		for _, f := range builder {
 			f(&req)
+		}
+
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
 		}
 
 		var stream func(b []byte)
@@ -384,6 +396,10 @@ func (o *Ollama) newPullModelFunc() PullModelFunc {
 			f(&req)
 		}
 
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
+		}
+
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
@@ -421,6 +437,10 @@ func (o *Ollama) newPushModelFunc() PushModelFunc {
 			f(&req)
 		}
 
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
+		}
+
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
@@ -456,6 +476,10 @@ func (o *Ollama) newGenerateEmbeddingsFunc() GenerateEmbeddingsFunc {
 		req := GenerateEmbeddingsBuilder{}
 		for _, f := range builder {
 			f(&req)
+		}
+
+		if req.StreamBufferSize == nil {
+			req.StreamBufferSize = pointer(1024)
 		}
 
 		body, err := o.Do("/api/embeddings", req, 0, nil)
