@@ -2,9 +2,9 @@ package ollama
 
 // ChatRequestBuilder represents the chat API request.
 type ChatRequestBuilder struct {
-	Model      *string `json:"model"`
-	Stream     *bool   `json:"stream"`
-	StreamFunc func(r *GCResponse, err error)
+	Model      *string                        `json:"model"`
+	Stream     *bool                          `json:"stream"`
+	StreamFunc func(r *GCResponse, err error) `json:"-"`
 
 	Format   *string   `json:"format"`
 	Images   []string  `json:"images"`

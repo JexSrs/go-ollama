@@ -2,10 +2,10 @@ package ollama
 
 // PullModelRequest represents the pull model API request.
 type PullModelRequest struct {
-	Name       *string `json:"name"`
-	Insecure   *bool   `json:"insecure"`
-	Stream     *bool   `json:"stream"`
-	StreamFunc func(r *StatusResponse, err error)
+	Name       *string                            `json:"name"`
+	Insecure   *bool                              `json:"insecure"`
+	Stream     *bool                              `json:"stream"`
+	StreamFunc func(r *StatusResponse, err error) `json:"-"`
 }
 
 // WithName sets the model used for this request.

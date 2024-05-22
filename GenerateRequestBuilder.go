@@ -2,10 +2,10 @@ package ollama
 
 // GenerateRequestBuilder represents the generate API request.
 type GenerateRequestBuilder struct {
-	Model      *string `json:"model"`
-	Prompt     *string `json:"prompt"`
-	Stream     *bool   `json:"stream"`
-	StreamFunc func(r *GCResponse, err error)
+	Model      *string                        `json:"model"`
+	Prompt     *string                        `json:"prompt"`
+	Stream     *bool                          `json:"stream"`
+	StreamFunc func(r *GCResponse, err error) `json:"-"`
 
 	// Format the format to return a response in. Currently, the only accepted value is json
 	Format *string  `json:"format"`

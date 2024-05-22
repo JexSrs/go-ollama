@@ -2,10 +2,10 @@ package ollama
 
 // PushModelRequest represents the push model API request.
 type PushModelRequest struct {
-	Name       *string `json:"name"`
-	Insecure   *bool   `json:"insecure"`
-	Stream     *bool   `json:"stream"`
-	StreamFunc func(r *PushModelResponse, err error)
+	Name       *string                               `json:"name"`
+	Insecure   *bool                                 `json:"insecure"`
+	Stream     *bool                                 `json:"stream"`
+	StreamFunc func(r *PushModelResponse, err error) `json:"-"`
 }
 
 // WithName sets the model used for this request.
