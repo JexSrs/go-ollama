@@ -20,8 +20,8 @@ type ModelFileBuilder struct {
 
 // Parameter represents a parameter sent to the API,
 type Parameter struct {
-	key   string
-	value string
+	Key   string
+	Value string
 }
 
 // WithStream passes a function to allow reading stream types.
@@ -134,7 +134,7 @@ func (m *ModelFileBuilder) Build(defaultModel string) string {
 	}
 
 	for _, p := range m.parameters {
-		r += "PARAMETER " + p.key + " " + p.value + "\n"
+		r += "PARAMETER " + p.Key + " " + p.Value + "\n"
 	}
 
 	if m.template != nil {
