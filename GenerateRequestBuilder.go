@@ -2,10 +2,11 @@ package ollama
 
 // GenerateRequestBuilder represents the generate API request.
 type GenerateRequestBuilder struct {
-	Model      *string                        `json:"model"`
-	Prompt     *string                        `json:"prompt"`
-	Stream     *bool                          `json:"stream"`
-	StreamFunc func(r *GCResponse, err error) `json:"-"`
+	Model            *string                        `json:"model"`
+	Prompt           *string                        `json:"prompt"`
+	Stream           *bool                          `json:"stream"`
+	StreamBufferSize *int                           `json:"-"`
+	StreamFunc       func(r *GCResponse, err error) `json:"-"`
 
 	// Format the format to return a response in. Currently, the only accepted value is json
 	Format *string  `json:"format"`
@@ -39,10 +40,12 @@ func (c GenerateFunc) WithPrompt(v string) func(*GenerateRequestBuilder) {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use streaming.
+//   - bufferSize: The size of the streamed buffer
 //   - f: The function to handle streaming types.
-func (c GenerateFunc) WithStream(v bool, f func(r *GCResponse, err error)) func(*GenerateRequestBuilder) {
+func (c GenerateFunc) WithStream(v bool, bufferSize int, f func(r *GCResponse, err error)) func(*GenerateRequestBuilder) {
 	return func(r *GenerateRequestBuilder) {
 		r.Stream = &v
+		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = f
 	}
 }

@@ -2,7 +2,7 @@ package ollama
 
 import (
 	"bytes"
-	json2 "encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +74,7 @@ func New(url string) *Ollama {
 // Parameters:
 //   - path: The API endpoint path.
 //   - data: The data to be sent in the request body, which will be marshaled to JSON.
+//   - maxBufferSize: The maximum buffer size of the response.
 //   - streamFunc: A function to handle streaming response chunks. If nil, the function waits for the complete response.
 //
 // Returns:
@@ -82,43 +83,65 @@ func New(url string) *Ollama {
 //
 // Example:
 //
-//	response, err := client.Do("/api/path", requestData, nil)
+//	response, err := client.Do("/api/path", requestData, 1024, nil)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println("GCResponse:", response)
-func (o *Ollama) Do(path string, data interface{}, streamFunc func(b []byte)) ([][]byte, error) {
-	json, err := json2.Marshal(data)
+func (o *Ollama) Do(path string, data interface{}, maxBufferSize int, streamFunc func(b []byte)) ([][]byte, error) {
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := o.Request("POST", path, bytes.NewBuffer(json))
+	resp, err := o.Request("POST", path, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var res [][]byte
-	buf := make([]byte, 1024)
-	for {
-		n, err := resp.Body.Read(buf)
-		if err != nil && err != io.EOF {
-			return nil, err
+	if streamFunc != nil {
+		var res [][]byte
+		var buffer bytes.Buffer
+
+		for {
+			buf := make([]byte, maxBufferSize)
+			n, err := resp.Body.Read(buf)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			if n == 0 {
+				break
+			}
+
+			chunk := buf[:n]
+
+			res = append(res, chunk)
+			buffer.Write(chunk)
+			streamFunc(chunk)
 		}
 
-		if n == 0 {
-			break
-		}
+		//// Process buffered data to handle complete JSON objects
+		//decoder := json.NewDecoder(resp.Body)
+		//for buffer.Len() > 0 {
+		//	var jsonObj map[string]interface{}
+		//	err := decoder.Decode(&jsonObj)
+		//	if err != nil {
+		//		if err == io.EOF {
+		//			break
+		//		}
+		//		return nil, err
+		//	}
+		//	// Here you can handle each JSON object as needed
+		//	fmt.Printf("JSON object: %v\n", jsonObj)
+		//}
 
-		res = append(res, buf[:n])
-
-		if streamFunc != nil {
-			streamFunc(buf[:n])
-		}
+		return res, nil
 	}
 
-	return res, nil
+	b, err := io.ReadAll(resp.Body)
+	return [][]byte{b}, nil
 }
 
 // Request performs an HTTP request to the Ollama API.

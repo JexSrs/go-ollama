@@ -4,8 +4,9 @@ package ollama
 type ModelFileBuilder struct {
 	Name *string
 
-	Stream     *bool
-	StreamFunc func(r *StatusResponse, err error)
+	Stream           *bool
+	StreamBufferSize *int
+	StreamFunc       func(r *StatusResponse, err error)
 
 	from       *string
 	parameters []Parameter
@@ -27,10 +28,12 @@ type Parameter struct {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use streaming.
+//   - bufferSize: The size of the streamed buffer
 //   - fc: The function to handle streaming types.
-func (f *CreateModelFunc) WithStream(v bool, fc func(r *StatusResponse, err error)) func(*ModelFileBuilder) {
+func (f *CreateModelFunc) WithStream(v bool, bufferSize int, fc func(r *StatusResponse, err error)) func(*ModelFileBuilder) {
 	return func(r *ModelFileBuilder) {
 		r.Stream = &v
+		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = fc
 	}
 }

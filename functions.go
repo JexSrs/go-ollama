@@ -121,7 +121,7 @@ func (o *Ollama) newChatFunc() ChatFunc {
 			}
 		}
 
-		body, err := o.Do("/api/chat", req, stream)
+		body, err := o.Do("/api/chat", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +192,7 @@ func (o *Ollama) newGenerateFunc() GenerateFunc {
 			}
 		}
 
-		body, err := o.Do("/api/generate", req, stream)
+		body, err := o.Do("/api/generate", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func (o *Ollama) newCreateModelFunc() CreateModelFunc {
 			"name":      req.Name,
 			"modelfile": req.Build(o.defaultModel),
 			"stream":    req.Stream,
-		}, stream)
+		}, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +391,7 @@ func (o *Ollama) newPullModelFunc() PullModelFunc {
 			}
 		}
 
-		body, err := o.Do("/api/pull", req, stream)
+		body, err := o.Do("/api/pull", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +428,7 @@ func (o *Ollama) newPushModelFunc() PushModelFunc {
 			}
 		}
 
-		body, err := o.Do("/api/push", req, stream)
+		body, err := o.Do("/api/push", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -458,7 +458,7 @@ func (o *Ollama) newGenerateEmbeddingsFunc() GenerateEmbeddingsFunc {
 			f(&req)
 		}
 
-		body, err := o.Do("/api/embeddings", req, nil)
+		body, err := o.Do("/api/embeddings", req, 0, nil)
 		if err != nil {
 			return nil, err
 		}

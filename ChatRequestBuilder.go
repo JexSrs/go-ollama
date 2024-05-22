@@ -2,9 +2,10 @@ package ollama
 
 // ChatRequestBuilder represents the chat API request.
 type ChatRequestBuilder struct {
-	Model      *string                        `json:"model"`
-	Stream     *bool                          `json:"stream"`
-	StreamFunc func(r *GCResponse, err error) `json:"-"`
+	Model            *string                        `json:"model"`
+	Stream           *bool                          `json:"stream"`
+	StreamBufferSize *int                           `json:"-"`
+	StreamFunc       func(r *GCResponse, err error) `json:"-"`
 
 	Format   *string   `json:"format"`
 	Images   []string  `json:"images"`
@@ -28,10 +29,12 @@ func (c ChatFunc) WithModel(v string) func(*ChatRequestBuilder) {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use streaming.
+//   - bufferSize: The size of the streamed buffer
 //   - f: The function to handle streaming
-func (c ChatFunc) WithStream(v bool, f func(r *GCResponse, err error)) func(*ChatRequestBuilder) {
+func (c ChatFunc) WithStream(v bool, bufferSize int, f func(r *GCResponse, err error)) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Stream = &v
+		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = f
 	}
 }

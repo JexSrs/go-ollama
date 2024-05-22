@@ -2,10 +2,12 @@ package ollama
 
 // PullModelRequest represents the pull model API request.
 type PullModelRequest struct {
-	Name       *string                            `json:"name"`
-	Insecure   *bool                              `json:"insecure"`
-	Stream     *bool                              `json:"stream"`
-	StreamFunc func(r *StatusResponse, err error) `json:"-"`
+	Name     *string `json:"name"`
+	Insecure *bool   `json:"insecure"`
+
+	Stream           *bool                              `json:"stream"`
+	StreamBufferSize *int                               `json:"-"`
+	StreamFunc       func(r *StatusResponse, err error) `json:"-"`
 }
 
 // WithName sets the model used for this request.
@@ -32,10 +34,12 @@ func (f PullModelFunc) WithInsecure(v bool) func(*PullModelRequest) {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use streaming.
+//   - bufferSize: The size of the streamed buffer
 //   - fc: The function to handle streaming types.
-func (f *PullModelFunc) WithStream(v bool, fc func(r *StatusResponse, err error)) func(*PullModelRequest) {
+func (f *PullModelFunc) WithStream(v bool, bufferSize int, fc func(r *StatusResponse, err error)) func(*PullModelRequest) {
 	return func(r *PullModelRequest) {
 		r.Stream = &v
+		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = fc
 	}
 }

@@ -2,10 +2,12 @@ package ollama
 
 // PushModelRequest represents the push model API request.
 type PushModelRequest struct {
-	Name       *string                               `json:"name"`
-	Insecure   *bool                                 `json:"insecure"`
-	Stream     *bool                                 `json:"stream"`
-	StreamFunc func(r *PushModelResponse, err error) `json:"-"`
+	Name     *string `json:"name"`
+	Insecure *bool   `json:"insecure"`
+
+	Stream           *bool                                 `json:"stream"`
+	StreamBufferSize *int                                  `json:"-"`
+	StreamFunc       func(r *PushModelResponse, err error) `json:"-"`
 }
 
 // WithName sets the model used for this request.
@@ -32,10 +34,12 @@ func (f PushModelFunc) WithInsecure(v bool) func(*PushModelRequest) {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use streaming.
+//   - bufferSize: The size of the streamed buffer
 //   - fc: The function to handle streaming types.
-func (f *PushModelFunc) WithStream(v bool, fc func(r *PushModelResponse, err error)) func(*PushModelRequest) {
+func (f *PushModelFunc) WithStream(v bool, bufferSize int, fc func(r *PushModelResponse, err error)) func(*PushModelRequest) {
 	return func(r *PushModelRequest) {
 		r.Stream = &v
+		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = fc
 	}
 }
