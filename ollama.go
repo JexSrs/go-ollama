@@ -3,6 +3,8 @@ package ollama
 import (
 	"bytes"
 	json2 "encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -140,7 +142,21 @@ func (o *Ollama) Request(method, path string, body io.Reader) (*http.Response, e
 	}
 
 	client := &http.Client{}
-	return client.Do(httpReq)
+	httpResp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpResp.StatusCode >= 400 {
+		respBody, err := io.ReadAll(httpResp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("status code: %d, failed to read response body: %w", httpResp.StatusCode, err)
+		}
+		httpResp.Body.Close() // Ensure the body is closed
+		return nil, errors.New(fmt.Sprintf("status code: %d, body: %s", httpResp.StatusCode, string(respBody)))
+	}
+
+	return httpResp, nil
 }
 
 // SetDefaultModel sets a default model to be used in requests if not specified.
