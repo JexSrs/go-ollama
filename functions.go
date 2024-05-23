@@ -3,7 +3,6 @@ package ollama
 import (
 	"bytes"
 	json2 "encoding/json"
-	"fmt"
 	"io"
 )
 
