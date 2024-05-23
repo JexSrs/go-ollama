@@ -10,7 +10,7 @@ type ChatRequestBuilder struct {
 	Format   *string   `json:"format"`
 	Images   []string  `json:"images"`
 	Raw      *bool     `json:"raw"`
-	Messages []Message `json:"message"`
+	Messages []Message `json:"messages"`
 
 	Options *Options `json:"options"`
 }

@@ -24,6 +24,16 @@ type Parameter struct {
 	Value string
 }
 
+// WithName sets the new model's name for this request.
+//
+// Parameters:
+//   - v: The model name.
+func (c *CreateModelFunc) WithName(v string) func(*ModelFileBuilder) {
+	return func(r *ModelFileBuilder) {
+		r.Name = &v
+	}
+}
+
 // WithStream passes a function to allow reading stream types.
 //
 // Parameters:

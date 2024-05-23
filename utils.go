@@ -30,3 +30,36 @@ func buildUrl(baseUrl, path string) string {
 	url += path
 	return url
 }
+
+func splitJSONObjects(data []byte) [][]byte {
+	var results [][]byte
+	var stack []byte
+	var start, end int
+	var inString bool
+
+	for i := 0; i < len(data); i++ {
+		switch data[i] {
+		case '{':
+			if !inString {
+				if len(stack) == 0 {
+					start = i
+				}
+				stack = append(stack, '{')
+			}
+		case '}':
+			if !inString {
+				stack = stack[:len(stack)-1]
+				if len(stack) == 0 {
+					end = i + 1
+					results = append(results, data[start:end])
+				}
+			}
+		case '"':
+			if i == 0 || data[i-1] != '\\' {
+				inString = !inString
+			}
+		}
+	}
+
+	return results
+}

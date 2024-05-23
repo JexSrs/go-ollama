@@ -3,6 +3,7 @@ package ollama
 import (
 	"bytes"
 	json2 "encoding/json"
+	"fmt"
 	"io"
 )
 
@@ -152,8 +153,13 @@ func (o *Ollama) newChatFunc() ChatFunc {
 				final.Done = r.Done
 			}
 
-			final.Message.Content = pointer(*final.Message.Content + *r.Message.Content)
-			final.Message.Images = append(final.Message.Images, r.Message.Images...)
+			if r.Message.Content != nil {
+				final.Message.Content = pointer(*final.Message.Content + *r.Message.Content)
+			}
+
+			if r.Message.Images != nil && len(r.Message.Images) > 0 {
+				final.Message.Images = append(final.Message.Images, r.Message.Images...)
+			}
 
 			if i == len(resp)-1 {
 				final.TotalDuration = r.TotalDuration
@@ -423,7 +429,13 @@ func (o *Ollama) newPullModelFunc() PullModelFunc {
 
 		final := &StatusResponse{}
 		for _, r := range resp {
-			final.Status += r.Status + "\n"
+			if len(r.Status) != 0 {
+				final.Status += r.Status + "\n"
+			}
+
+			if len(r.Error) != 0 {
+				final.Error += r.Error + "\n"
+			}
 		}
 
 		return final, nil

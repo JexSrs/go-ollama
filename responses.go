@@ -44,4 +44,5 @@ type ShowModelInfoResponse struct {
 // StatusResponse represents the API response for endpoint that return status updates.
 type StatusResponse struct {
 	Status string `json:"status"`
+	Error  string `json:"error"`
 }

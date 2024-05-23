@@ -100,48 +100,32 @@ func (o *Ollama) Do(path string, data interface{}, maxBufferSize int, streamFunc
 	}
 	defer resp.Body.Close()
 
-	if streamFunc != nil {
-		var res [][]byte
-		var buffer bytes.Buffer
+	var res [][]byte
+	var buffer bytes.Buffer
 
-		for {
-			buf := make([]byte, maxBufferSize)
-			n, err := resp.Body.Read(buf)
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
-
-			if n == 0 {
-				break
-			}
-
-			chunk := buf[:n]
-
-			res = append(res, chunk)
-			buffer.Write(chunk)
-			streamFunc(chunk)
+	for {
+		buf := make([]byte, maxBufferSize)
+		n, err := resp.Body.Read(buf)
+		if err != nil && err != io.EOF {
+			return nil, err
 		}
 
-		//// Process buffered data to handle complete JSON objects
-		//decoder := json.NewDecoder(resp.Body)
-		//for buffer.Len() > 0 {
-		//	var jsonObj map[string]interface{}
-		//	err := decoder.Decode(&jsonObj)
-		//	if err != nil {
-		//		if err == io.EOF {
-		//			break
-		//		}
-		//		return nil, err
-		//	}
-		//	// Here you can handle each JSON object as needed
-		//	fmt.Printf("JSON object: %v\n", jsonObj)
-		//}
+		if n == 0 {
+			break
+		}
 
-		return res, nil
+		bigChunk := splitJSONObjects(buf[:n])
+		for _, chunk := range bigChunk {
+			res = append(res, chunk)
+			buffer.Write(chunk)
+
+			if streamFunc != nil {
+				streamFunc(chunk)
+			}
+		}
 	}
 
-	b, err := io.ReadAll(resp.Body)
-	return [][]byte{b}, nil
+	return res, nil
 }
 
 // Request performs an HTTP request to the Ollama API.
