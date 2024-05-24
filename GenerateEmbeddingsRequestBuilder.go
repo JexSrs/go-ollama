@@ -1,7 +1,7 @@
 package ollama
 
-// GenerateEmbeddingsBuilder represents the generate embeddings API request.
-type GenerateEmbeddingsBuilder struct {
+// GenerateEmbeddingsRequestBuilder represents the generate embeddings API request.
+type GenerateEmbeddingsRequestBuilder struct {
 	Model     *string  `json:"model"`
 	Prompt    *string  `json:"prompt"`
 	KeepAlive *string  `json:"keep_alive"`
@@ -12,8 +12,8 @@ type GenerateEmbeddingsBuilder struct {
 //
 // Parameters:
 //   - v: The model name.
-func (c GenerateEmbeddingsFunc) WithModel(v string) func(*GenerateEmbeddingsBuilder) {
-	return func(r *GenerateEmbeddingsBuilder) {
+func (c GenerateEmbeddingsFunc) WithModel(v string) func(*GenerateEmbeddingsRequestBuilder) {
+	return func(r *GenerateEmbeddingsRequestBuilder) {
 		r.Model = &v
 	}
 }
@@ -22,8 +22,8 @@ func (c GenerateEmbeddingsFunc) WithModel(v string) func(*GenerateEmbeddingsBuil
 //
 // Parameters:
 //   - v: The prompt string.
-func (c GenerateEmbeddingsFunc) WithPrompt(v string) func(*GenerateEmbeddingsBuilder) {
-	return func(r *GenerateEmbeddingsBuilder) {
+func (c GenerateEmbeddingsFunc) WithPrompt(v string) func(*GenerateEmbeddingsRequestBuilder) {
+	return func(r *GenerateEmbeddingsRequestBuilder) {
 		r.Prompt = &v
 	}
 }
@@ -32,8 +32,8 @@ func (c GenerateEmbeddingsFunc) WithPrompt(v string) func(*GenerateEmbeddingsBui
 //
 // Parameters:
 //   - v: The keep alive string.
-func (c GenerateEmbeddingsFunc) WithKeepAlive(v string) func(*GenerateEmbeddingsBuilder) {
-	return func(r *GenerateEmbeddingsBuilder) {
+func (c GenerateEmbeddingsFunc) WithKeepAlive(v string) func(*GenerateEmbeddingsRequestBuilder) {
+	return func(r *GenerateEmbeddingsRequestBuilder) {
 		r.KeepAlive = &v
 	}
 }
@@ -42,8 +42,8 @@ func (c GenerateEmbeddingsFunc) WithKeepAlive(v string) func(*GenerateEmbeddings
 //
 // Parameters:
 //   - v: The options to set.
-func (c GenerateEmbeddingsFunc) WithOptions(v Options) func(*GenerateEmbeddingsBuilder) {
-	return func(r *GenerateEmbeddingsBuilder) {
+func (c GenerateEmbeddingsFunc) WithOptions(v Options) func(*GenerateEmbeddingsRequestBuilder) {
+	return func(r *GenerateEmbeddingsRequestBuilder) {
 		r.Options = &v
 	}
 }

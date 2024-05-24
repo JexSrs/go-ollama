@@ -1,13 +1,8 @@
 package ollama
 
-// Model represents a model's metadata.
-type Model struct {
-	Name       string       `json:"name"`
-	ModifiedAt string       `json:"modified_at"`
-	Size       int64        `json:"size"`
-	Digest     string       `json:"digest"`
-	Details    ModelDetails `json:"details"`
-}
+import (
+	"time"
+)
 
 // ModelDetails represents detailed information about a model.
 type ModelDetails struct {
@@ -54,4 +49,13 @@ type Options struct {
 	UseMLock         *bool    `json:"use_mlock"`         // Use memory locking.
 	Seed             *int     `json:"seed"`              // Random seed.
 	Temperature      *float64 `json:"temperature"`       // Temperature for generation.
+}
+
+type Metrics struct {
+	TotalDuration      time.Duration `json:"total_duration"`
+	LoadDuration       time.Duration `json:"load_duration"`
+	PromptEvalCount    int           `json:"prompt_eval_count"`
+	PromptEvalDuration time.Duration `json:"prompt_eval_duration"`
+	EvalCount          int           `json:"eval_count"`
+	EvalDuration       time.Duration `json:"eval_duration"`
 }

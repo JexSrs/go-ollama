@@ -1,12 +1,15 @@
 package ollama
 
-// ModelFileBuilder represents the model creation API request.
-type ModelFileBuilder struct {
-	Name *string
+// ModelFileRequestBuilder represents the model creation API request.
+type ModelFileRequestBuilder struct {
+	Model     *string `json:"model"`
+	Path      *string `json:"path"`
+	Modelfile *string `json:"modelfile"`
+	Quantize  *string `json:"quantize"`
 
-	Stream           *bool
-	StreamBufferSize *int
-	StreamFunc       func(r *StatusResponse, err error)
+	Stream           *bool                              `json:"stream"`
+	StreamBufferSize *int                               `json:"-"`
+	StreamFunc       func(r *StatusResponse, err error) `json:"-"`
 
 	from       *string
 	parameters []Parameter
@@ -24,13 +27,23 @@ type Parameter struct {
 	Value string
 }
 
-// WithName sets the new model's name for this request.
+// WithModel sets the new model's name for this request.
 //
 // Parameters:
 //   - v: The model name.
-func (c *CreateModelFunc) WithName(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
-		r.Name = &v
+func (f *CreateModelFunc) WithModel(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
+		r.Model = &v
+	}
+}
+
+// WithPath sets the path for this request.
+//
+// Parameters:
+//   - v: The path.
+func (f *CreateModelFunc) WithPath(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
+		r.Path = &v
 	}
 }
 
@@ -40,11 +53,21 @@ func (c *CreateModelFunc) WithName(v string) func(*ModelFileBuilder) {
 //   - v: A boolean indicating whether to use streaming.
 //   - bufferSize: The size of the streamed buffer
 //   - fc: The function to handle streaming types.
-func (f *CreateModelFunc) WithStream(v bool, bufferSize int, fc func(r *StatusResponse, err error)) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithStream(v bool, bufferSize int, fc func(r *StatusResponse, err error)) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.Stream = &v
 		r.StreamBufferSize = &bufferSize
 		r.StreamFunc = fc
+	}
+}
+
+// WithQuantize sets the quantize for this request.
+//
+// Parameters:
+//   - v: The quantize value.
+func (f *CreateModelFunc) WithQuantize(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
+		r.Quantize = &v
 	}
 }
 
@@ -52,8 +75,8 @@ func (f *CreateModelFunc) WithStream(v bool, bufferSize int, fc func(r *StatusRe
 //
 // Parameters:
 //   - v: The base model string.
-func (f *CreateModelFunc) WithFrom(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithFrom(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.from = &v
 	}
 }
@@ -62,8 +85,8 @@ func (f *CreateModelFunc) WithFrom(v string) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The template string.
-func (f *CreateModelFunc) WithTemplate(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithTemplate(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.template = &v
 	}
 }
@@ -72,8 +95,8 @@ func (f *CreateModelFunc) WithTemplate(v string) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The system message string.
-func (f *CreateModelFunc) WithSystem(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithSystem(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.system = &v
 	}
 }
@@ -82,8 +105,8 @@ func (f *CreateModelFunc) WithSystem(v string) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The parameter to append.
-func (f *CreateModelFunc) WithParameter(v Parameter) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithParameter(v Parameter) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.parameters = append(r.parameters, v)
 	}
 }
@@ -92,8 +115,8 @@ func (f *CreateModelFunc) WithParameter(v Parameter) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The adapter string.
-func (f *CreateModelFunc) WithAdapter(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithAdapter(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.adapter = &v
 	}
 }
@@ -102,8 +125,8 @@ func (f *CreateModelFunc) WithAdapter(v string) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The license string.
-func (f *CreateModelFunc) WithLicense(v string) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithLicense(v string) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.license = &v
 	}
 }
@@ -112,8 +135,8 @@ func (f *CreateModelFunc) WithLicense(v string) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - v: The message to append.
-func (f *CreateModelFunc) WithMessage(v Message) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithMessage(v Message) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.messages = append(r.messages, v)
 	}
 }
@@ -122,8 +145,8 @@ func (f *CreateModelFunc) WithMessage(v Message) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - chat: The chat whose messages to append.
-func (f *CreateModelFunc) WithChat(chat *Chat) func(*ModelFileBuilder) {
-	return func(r *ModelFileBuilder) {
+func (f *CreateModelFunc) WithChat(chat *Chat) func(*ModelFileRequestBuilder) {
+	return func(r *ModelFileRequestBuilder) {
 		r.messages = append(r.messages, chat.Messages...)
 	}
 }
@@ -132,12 +155,8 @@ func (f *CreateModelFunc) WithChat(chat *Chat) func(*ModelFileBuilder) {
 //
 // Parameters:
 //   - defaultModel: The default model string.
-func (m *ModelFileBuilder) Build(defaultModel string) string {
+func (m *ModelFileRequestBuilder) Build() string {
 	r := ""
-
-	if m.from == nil {
-		m.from = pointer(defaultModel)
-	}
 
 	if m.from != nil {
 		r += "FROM " + *m.from + "\n"

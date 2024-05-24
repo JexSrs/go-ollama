@@ -3,7 +3,9 @@ package ollama
 import (
 	"bytes"
 	json2 "encoding/json"
+	"fmt"
 	"io"
+	"net/http"
 )
 
 // ChatFunc performs a request to the Ollama API with the provided instructions.
@@ -12,33 +14,33 @@ import (
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type ChatFunc func(chatId *string, builder ...func(reqBuilder *ChatRequestBuilder)) (*GCResponse, error)
+type ChatFunc func(chatId *string, builder ...func(reqBuilder *ChatRequestBuilder)) (*ChatResponse, error)
 
 // GenerateFunc performs a request to the Ollama API with the provided instructions.
 // If the prompt is not set, the model will be loaded into memory.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type GenerateFunc func(builder ...func(reqBuilder *GenerateRequestBuilder)) (*GCResponse, error)
+type GenerateFunc func(builder ...func(reqBuilder *GenerateRequestBuilder)) (*GenerateResponse, error)
 
 // BlobCreateFunc performs a request to the Ollama API to create a new blob with the provided blob file.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type BlobCreateFunc func(digest string, data []byte) (bool, error)
+type BlobCreateFunc func(digest string, data []byte) error
 
 // BlobCheckFunc performs a request to the Ollama API to check if a blob file exists.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type BlobCheckFunc func(digest string) (bool, error)
+type BlobCheckFunc func(digest string) error
 
 // CreateModelFunc performs a request to the Ollama API to create a new model with the provided model file.
 // Canceled pulls are resumed from where they left off, and multiple calls will share the same download progress.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type CreateModelFunc func(builder ...func(modelFileBuilder *ModelFileBuilder)) (*StatusResponse, error)
+type CreateModelFunc func(builder ...func(modelFileBuilder *ModelFileRequestBuilder)) (*StatusResponse, error)
 
 // ListLocalModelsFunc performs a request to the Ollama API to retrieve the local models.
 //
@@ -50,48 +52,50 @@ type ListLocalModelsFunc func() (*ListLocalModelsResponse, error)
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type ShowModelInfoFunc func(name string) (*ShowModelInfoResponse, error)
+type ShowModelInfoFunc func(builder ...func(reqBuilder *ShowModelRequestBuilder)) (*ShowModelInfoResponse, error)
 
 // CopyModelFunc performs a request to the Ollama API to copy an existing model under a different name.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type CopyModelFunc func(source, destination string) (bool, error)
+type CopyModelFunc func(source, destination string) error
 
 // DeleteModelFunc performs a request to the Ollama API to delete a model.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type DeleteModelFunc func(name string) (bool, error)
+type DeleteModelFunc func(name string) error
 
 // PullModelFunc performs a request to the Ollama API to pull model from the ollama library.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type PullModelFunc func(...func(modelFileBuilder *PullModelRequest)) (*StatusResponse, error)
+type PullModelFunc func(...func(modelFileBuilder *PullModelRequestBuilder)) (*PushPullModelResponse, error)
 
 // PushModelFunc performs a request to the Ollama API to push model to the ollama library.
 // Requires registering for ollama.ai and adding a public key first
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type PushModelFunc func(...func(modelFileBuilder *PushModelRequest)) (*PushModelResponse, error)
+type PushModelFunc func(...func(modelFileBuilder *PushModelRequestBuilder)) (*PushPullModelResponse, error)
 
 // GenerateEmbeddingsFunc performs a request to the Ollama API to generate embeddings from a model.
 //
 // For more information about the request, see the API documentation:
 // https://github.com/ollama/ollama/blob/main/docs/api.md
-type GenerateEmbeddingsFunc func(...func(modelFileBuilder *GenerateEmbeddingsBuilder)) (*GenerateEmbeddingsResponse, error)
+type GenerateEmbeddingsFunc func(...func(modelFileBuilder *GenerateEmbeddingsRequestBuilder)) (*GenerateEmbeddingsResponse, error)
+
+// VersionFunc performs a request to the Ollama API and returns the Ollama server version as a string.
+//
+// For more information about the request, see the API documentation:
+// https://github.com/ollama/ollama/blob/main/docs/api.md
+type VersionFunc func() (*VersionResponse, error)
 
 func (o *Ollama) newChatFunc() ChatFunc {
-	return func(chatId *string, builder ...func(reqBuilder *ChatRequestBuilder)) (*GCResponse, error) {
+	return func(chatId *string, builder ...func(reqBuilder *ChatRequestBuilder)) (*ChatResponse, error) {
 		req := ChatRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
-		}
-
-		if req.Model == nil {
-			req.Model = pointer(o.defaultModel)
 		}
 
 		if req.Stream == nil {
@@ -99,7 +103,7 @@ func (o *Ollama) newChatFunc() ChatFunc {
 		}
 
 		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
+			req.StreamBufferSize = pointer(512000)
 		}
 
 		// Include chat history or create a new chat
@@ -121,18 +125,18 @@ func (o *Ollama) newChatFunc() ChatFunc {
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
-				req.StreamFunc(bodyTo[GCResponse](b))
+				req.StreamFunc(bodyTo[ChatResponse](b))
 			}
 		}
 
-		body, err := o.Do("/api/chat", req, *req.StreamBufferSize, stream)
+		body, err := o.stream(http.MethodPost, "/api/chat", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
 
-		resp := make([]GCResponse, 0)
+		resp := make([]ChatResponse, 0)
 		for _, b := range body {
-			r, err := bodyTo[GCResponse](b)
+			r, err := bodyTo[ChatResponse](b)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +144,7 @@ func (o *Ollama) newChatFunc() ChatFunc {
 		}
 
 		// Connect types
-		final := &GCResponse{}
+		final := &ChatResponse{}
 		for i, r := range resp {
 			if i == 0 {
 				final.Model = r.Model
@@ -180,14 +184,10 @@ func (o *Ollama) newChatFunc() ChatFunc {
 }
 
 func (o *Ollama) newGenerateFunc() GenerateFunc {
-	return func(builder ...func(reqBuilder *GenerateRequestBuilder)) (*GCResponse, error) {
+	return func(builder ...func(reqBuilder *GenerateRequestBuilder)) (*GenerateResponse, error) {
 		req := GenerateRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
-		}
-
-		if req.Model == nil {
-			req.Model = pointer(o.defaultModel)
 		}
 
 		if req.Stream == nil {
@@ -195,24 +195,24 @@ func (o *Ollama) newGenerateFunc() GenerateFunc {
 		}
 
 		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
+			req.StreamBufferSize = pointer(512000)
 		}
 
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
-				req.StreamFunc(bodyTo[GCResponse](b))
+				req.StreamFunc(bodyTo[GenerateResponse](b))
 			}
 		}
 
-		body, err := o.Do("/api/generate", req, *req.StreamBufferSize, stream)
+		body, err := o.stream(http.MethodPost, "/api/generate", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
 
-		resp := make([]GCResponse, 0)
+		resp := make([]GenerateResponse, 0)
 		for _, b := range body {
-			r, err := bodyTo[GCResponse](b)
+			r, err := bodyTo[GenerateResponse](b)
 			if err != nil {
 				return nil, err
 			}
@@ -220,7 +220,7 @@ func (o *Ollama) newGenerateFunc() GenerateFunc {
 		}
 
 		// Connect types
-		final := &GCResponse{}
+		final := &GenerateResponse{}
 		for i, r := range resp {
 			if i == 0 {
 				final.Model = r.Model
@@ -246,38 +246,38 @@ func (o *Ollama) newGenerateFunc() GenerateFunc {
 }
 
 func (o *Ollama) newBlobCreateFunc() BlobCreateFunc {
-	return func(digest string, data []byte) (bool, error) {
-		res, err := o.Request("POST", "/api/blobs/"+digest, bytes.NewBuffer(data))
+	return func(digest string, data []byte) error {
+		res, err := o.request(http.MethodPost, "/api/blobs/"+digest, bytes.NewBuffer(data))
 		if err != nil {
-			return false, err
+			return err
 		}
 		defer res.Body.Close()
 
-		return res.StatusCode == 200, nil
+		return nil
 	}
 }
 
 func (o *Ollama) newBlobCheckFunc() BlobCheckFunc {
-	return func(digest string) (bool, error) {
-		res, err := o.Request("HEAD", "/api/blobs/"+digest, nil)
+	return func(digest string) error {
+		res, err := o.request(http.MethodHead, "/api/blobs/"+digest, nil)
 		if err != nil {
-			return false, err
+			return err
 		}
 		defer res.Body.Close()
 
-		return res.StatusCode == 200, nil
+		return nil
 	}
 }
 
 func (o *Ollama) newCreateModelFunc() CreateModelFunc {
-	return func(builder ...func(modelFileBuilder *ModelFileBuilder)) (*StatusResponse, error) {
-		req := ModelFileBuilder{}
+	return func(builder ...func(modelFileBuilder *ModelFileRequestBuilder)) (*StatusResponse, error) {
+		req := ModelFileRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
 		}
 
 		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
+			req.StreamBufferSize = pointer(512000)
 		}
 
 		var stream func(b []byte)
@@ -287,11 +287,9 @@ func (o *Ollama) newCreateModelFunc() CreateModelFunc {
 			}
 		}
 
-		body, err := o.Do("/api/create", map[string]any{
-			"name":      req.Name,
-			"modelfile": req.Build(o.defaultModel),
-			"stream":    req.Stream,
-		}, *req.StreamBufferSize, stream)
+		req.Modelfile = pointer(req.Build())
+
+		body, err := o.stream(http.MethodPost, "/api/create", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +314,7 @@ func (o *Ollama) newCreateModelFunc() CreateModelFunc {
 
 func (o *Ollama) newListLocalModelsFunc() ListLocalModelsFunc {
 	return func() (*ListLocalModelsResponse, error) {
-		res, err := o.Request("GET", "/api/tags", nil)
+		res, err := o.request(http.MethodGet, "/api/tags", nil)
 		if err != nil {
 			return nil, err
 		}
@@ -332,15 +330,18 @@ func (o *Ollama) newListLocalModelsFunc() ListLocalModelsFunc {
 }
 
 func (o *Ollama) newShowModelInfoFunc() ShowModelInfoFunc {
-	return func(name string) (*ShowModelInfoResponse, error) {
-		json, err := json2.Marshal(map[string]string{
-			"name": name,
-		})
+	return func(builder ...func(reqBuilder *ShowModelRequestBuilder)) (*ShowModelInfoResponse, error) {
+		req := ShowModelRequestBuilder{}
+		for _, f := range builder {
+			f(&req)
+		}
+
+		json, err := json2.Marshal(req)
 		if err != nil {
 			return nil, err
 		}
 
-		res, err := o.Request("POST", "/api/show", bytes.NewBuffer(json))
+		res, err := o.request(http.MethodPost, "/api/show", bytes.NewBuffer(json))
 		if err != nil {
 			return nil, err
 		}
@@ -356,77 +357,77 @@ func (o *Ollama) newShowModelInfoFunc() ShowModelInfoFunc {
 }
 
 func (o *Ollama) newCopyModelFunc() CopyModelFunc {
-	return func(source, destination string) (bool, error) {
+	return func(source, destination string) error {
 		json, err := json2.Marshal(map[string]string{
 			"source":      source,
 			"destination": destination,
 		})
 		if err != nil {
-			return false, err
+			return err
 		}
 
-		res, err := o.Request("POST", "/api/copy", bytes.NewBuffer(json))
+		res, err := o.request(http.MethodPost, "/api/copy", bytes.NewBuffer(json))
 		if err != nil {
-			return false, err
+			return err
 		}
 		defer res.Body.Close()
 
-		return res.StatusCode == 200, nil
+		return nil
 	}
 }
 
 func (o *Ollama) newDeleteModelFunc() DeleteModelFunc {
-	return func(name string) (bool, error) {
+	return func(model string) error {
 		json, err := json2.Marshal(map[string]string{
-			"name": name,
+			"model": model,
 		})
 		if err != nil {
-			return false, err
+			return err
 		}
 
-		res, err := o.Request("DELETE", "/api/delete", bytes.NewBuffer(json))
+		res, err := o.request(http.MethodDelete, "/api/delete", bytes.NewBuffer(json))
 		if err != nil {
-			return false, err
+			return err
 		}
 		defer res.Body.Close()
 
-		return res.StatusCode == 200, nil
+		return nil
 	}
 }
 
 func (o *Ollama) newPullModelFunc() PullModelFunc {
-	return func(builder ...func(modelFileBuilder *PullModelRequest)) (*StatusResponse, error) {
-		req := PullModelRequest{}
+	return func(builder ...func(modelFileBuilder *PullModelRequestBuilder)) (*PushPullModelResponse, error) {
+		req := PullModelRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
 		}
 
 		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
+			req.StreamBufferSize = pointer(512000)
 		}
 
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
-				req.StreamFunc(bodyTo[StatusResponse](b))
+				req.StreamFunc(bodyTo[PushPullModelResponse](b))
 			}
 		}
 
-		body, err := o.Do("/api/pull", req, *req.StreamBufferSize, stream)
+		body, err := o.stream(http.MethodPost, "/api/pull", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
 
-		resp := make([]StatusResponse, 0)
+		resp := make([]PushPullModelResponse, 0)
 		for _, b := range body {
-			r, err := bodyTo[StatusResponse](b)
+			r, err := bodyTo[PushPullModelResponse](b)
 			if err != nil {
 				return nil, err
 			}
 			resp = append(resp, *r)
 		}
 
-		final := &StatusResponse{}
+		final := &PushPullModelResponse{}
 		for _, r := range resp {
 			if len(r.Status) != 0 {
 				final.Status += r.Status + "\n"
@@ -442,38 +443,38 @@ func (o *Ollama) newPullModelFunc() PullModelFunc {
 }
 
 func (o *Ollama) newPushModelFunc() PushModelFunc {
-	return func(builder ...func(modelFileBuilder *PushModelRequest)) (*PushModelResponse, error) {
-		req := PushModelRequest{}
+	return func(builder ...func(modelFileBuilder *PushModelRequestBuilder)) (*PushPullModelResponse, error) {
+		req := PushModelRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
 		}
 
 		if req.StreamBufferSize == nil {
-			req.StreamBufferSize = pointer(1024)
+			req.StreamBufferSize = pointer(512000)
 		}
 
 		var stream func(b []byte)
 		if req.StreamFunc != nil {
 			stream = func(b []byte) {
-				req.StreamFunc(bodyTo[PushModelResponse](b))
+				req.StreamFunc(bodyTo[PushPullModelResponse](b))
 			}
 		}
 
-		body, err := o.Do("/api/push", req, *req.StreamBufferSize, stream)
+		body, err := o.stream(http.MethodPost, "/api/push", req, *req.StreamBufferSize, stream)
 		if err != nil {
 			return nil, err
 		}
 
-		resp := make([]PushModelResponse, 0)
+		resp := make([]PushPullModelResponse, 0)
 		for _, b := range body {
-			r, err := bodyTo[PushModelResponse](b)
+			r, err := bodyTo[PushPullModelResponse](b)
 			if err != nil {
 				return nil, err
 			}
 			resp = append(resp, *r)
 		}
 
-		final := &PushModelResponse{}
+		final := &PushPullModelResponse{}
 		for _, r := range resp {
 			final.Status += r.Status + "\n"
 		}
@@ -483,18 +484,40 @@ func (o *Ollama) newPushModelFunc() PushModelFunc {
 }
 
 func (o *Ollama) newGenerateEmbeddingsFunc() GenerateEmbeddingsFunc {
-	return func(builder ...func(modelFileBuilder *GenerateEmbeddingsBuilder)) (*GenerateEmbeddingsResponse, error) {
-		req := GenerateEmbeddingsBuilder{}
+	return func(builder ...func(modelFileBuilder *GenerateEmbeddingsRequestBuilder)) (*GenerateEmbeddingsResponse, error) {
+		req := GenerateEmbeddingsRequestBuilder{}
 		for _, f := range builder {
 			f(&req)
 		}
 
-		body, err := o.Do("/api/embeddings", req, 0, nil)
+		body, err := o.stream(http.MethodPost, "/api/embeddings", req, 0, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		r, err := bodyTo[GenerateEmbeddingsResponse](body[0])
+		if err != nil {
+			return nil, err
+		}
+
+		return r, nil
+	}
+}
+
+func (o *Ollama) newVersionFunc() VersionFunc {
+	return func() (*VersionResponse, error) {
+		res, err := o.request(http.MethodGet, "/api/version", nil)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+
+		respBody, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("status code: %d, failed to read response body: %w", res.StatusCode, err)
+		}
+
+		r, err := bodyTo[VersionResponse](respBody)
 		if err != nil {
 			return nil, err
 		}

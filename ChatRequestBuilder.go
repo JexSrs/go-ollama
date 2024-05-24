@@ -2,24 +2,23 @@ package ollama
 
 // ChatRequestBuilder represents the chat API request.
 type ChatRequestBuilder struct {
-	Model            *string                        `json:"model"`
-	Stream           *bool                          `json:"stream"`
-	StreamBufferSize *int                           `json:"-"`
-	StreamFunc       func(r *GCResponse, err error) `json:"-"`
+	Model     *string   `json:"model"`
+	Format    *string   `json:"format"`
+	Raw       *bool     `json:"raw"`
+	Messages  []Message `json:"messages"`
+	KeepAlive *string   `json:"keep_alive,omitempty"`
+	Options   *Options  `json:"options"`
 
-	Format   *string   `json:"format"`
-	Images   []string  `json:"images"`
-	Raw      *bool     `json:"raw"`
-	Messages []Message `json:"messages"`
-
-	Options *Options `json:"options"`
+	Stream           *bool                            `json:"stream"`
+	StreamBufferSize *int                             `json:"-"`
+	StreamFunc       func(r *ChatResponse, err error) `json:"-"`
 }
 
 // WithModel sets the model used for this request.
 //
 // Parameters:
 //   - v: The model name.
-func (c ChatFunc) WithModel(v string) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithModel(v string) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Model = &v
 	}
@@ -31,11 +30,11 @@ func (c ChatFunc) WithModel(v string) func(*ChatRequestBuilder) {
 //   - v: A boolean indicating whether to use streaming.
 //   - bufferSize: The size of the streamed buffer
 //   - f: The function to handle streaming
-func (c ChatFunc) WithStream(v bool, bufferSize int, f func(r *GCResponse, err error)) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithStream(v bool, bufferSize int, fn func(r *ChatResponse, err error)) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Stream = &v
 		r.StreamBufferSize = &bufferSize
-		r.StreamFunc = f
+		r.StreamFunc = fn
 	}
 }
 
@@ -43,19 +42,9 @@ func (c ChatFunc) WithStream(v bool, bufferSize int, f func(r *GCResponse, err e
 //
 // Parameters:
 //   - v: The format string.
-func (c ChatFunc) WithFormat(v string) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithFormat(v string) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Format = &v
-	}
-}
-
-// WithImage appends an image to the message sent to  The image must be base64 encoded.
-//
-// Parameters:
-//   - v: The base64 encoded image string.
-func (c ChatFunc) WithImage(v string) func(*ChatRequestBuilder) {
-	return func(r *ChatRequestBuilder) {
-		r.Images = append(r.Images, v)
 	}
 }
 
@@ -63,7 +52,7 @@ func (c ChatFunc) WithImage(v string) func(*ChatRequestBuilder) {
 //
 // Parameters:
 //   - v: A boolean indicating whether to use raw mode.
-func (c ChatFunc) WithRaw(v bool) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithRaw(v bool) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Raw = &v
 	}
@@ -73,7 +62,7 @@ func (c ChatFunc) WithRaw(v bool) func(*ChatRequestBuilder) {
 //
 // Parameters:
 //   - v: The temperature value.
-func (c ChatFunc) WithTemperature(v float64) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithTemperature(v float64) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		if r.Options == nil {
 			r.Options = &Options{}
@@ -87,7 +76,7 @@ func (c ChatFunc) WithTemperature(v float64) func(*ChatRequestBuilder) {
 //
 // Parameters:
 //   - v: The seed value.
-func (c ChatFunc) WithSeed(v int) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithSeed(v int) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		if r.Options == nil {
 			r.Options = &Options{}
@@ -101,7 +90,7 @@ func (c ChatFunc) WithSeed(v int) func(*ChatRequestBuilder) {
 //
 // Parameters:
 //   - v: The message to append.
-func (c ChatFunc) WithMessage(v Message) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithMessage(v Message) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		if v.Role == nil {
 			v.Role = pointer("user")
@@ -111,11 +100,21 @@ func (c ChatFunc) WithMessage(v Message) func(*ChatRequestBuilder) {
 	}
 }
 
+// WithKeepAlive controls how long the model will stay loaded into memory following the request.
+//
+// Parameters:
+//   - v: The keep alive duration.
+func (f *ChatFunc) WithKeepAlive(v string) func(*ChatRequestBuilder) {
+	return func(r *ChatRequestBuilder) {
+		r.KeepAlive = &v
+	}
+}
+
 // WithOptions sets the options for this request. It will override any settings set before, such as temperature and seed.
 //
 // Parameters:
 //   - v: The options to set.
-func (c ChatFunc) WithOptions(v Options) func(*ChatRequestBuilder) {
+func (f *ChatFunc) WithOptions(v Options) func(*ChatRequestBuilder) {
 	return func(r *ChatRequestBuilder) {
 		r.Options = &v
 	}
