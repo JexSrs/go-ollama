@@ -11,12 +11,12 @@ import (
 var LLM *Ollama
 
 const (
-	_Model   = "phi3"
+	_Model   = "phi3.5"
 	_Message = "Respond only with the text \"Hello I am here to assist you.\""
 )
 
 func init() {
-	uri, _ := url.Parse("http://localhost:11434")
+	uri, _ := url.Parse("http://ollama.home.local:11434")
 	LLM = New(*uri)
 }
 

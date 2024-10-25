@@ -12,9 +12,10 @@ import (
 
 // Ollama represents a client for interacting with the Ollama API.
 type Ollama struct {
-	url   url.URL
-	Http  *http.Client
-	chats map[string]*Chat
+	url     url.URL
+	Http    *http.Client
+	chats   map[string]*Chat
+	headers map[string][]string
 
 	Chat     ChatFunc
 	Generate GenerateFunc
@@ -45,9 +46,10 @@ type Ollama struct {
 //	llm := New("http://api.ollama.com")
 func New(v url.URL) *Ollama {
 	o := &Ollama{
-		url:   v,
-		Http:  &http.Client{},
-		chats: make(map[string]*Chat),
+		url:     v,
+		Http:    &http.Client{},
+		chats:   make(map[string]*Chat),
+		headers: make(map[string][]string),
 	}
 
 	o.Chat = o.newChatFunc()
@@ -101,6 +103,11 @@ func (o *Ollama) DeleteAllChats() {
 	o.chats = make(map[string]*Chat, 0)
 }
 
+// SetHeaders sets the headers for all the requests.
+func (o *Ollama) SetHeaders(key string, value []string) {
+	o.headers[key] = value
+}
+
 func (o *Ollama) stream(method, path string, data interface{}, maxBufferSize int, streamFunc func(b []byte)) ([][]byte, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -149,6 +156,13 @@ func (o *Ollama) request(method, path string, body io.Reader) (*http.Response, e
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
+
+	for k, v := range o.headers {
+		httpReq.Header.Del(k)
+		for _, h := range v {
+			httpReq.Header.Add(k, h)
+		}
+	}
 
 	httpResp, err := o.Http.Do(httpReq)
 	if err != nil {

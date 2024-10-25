@@ -15,6 +15,9 @@ go get github.com/JexSrs/go-ollama
 
 ```go
 LLM := ollama.New("http://localhost:11434")
+
+// Optionally set headers for each request
+LLM.SetHeaders("Authorization", []string{"Bearer xyz"})
 ```
 
 ### Generate a completion
