@@ -490,7 +490,7 @@ func (o *Ollama) newGenerateEmbeddingsFunc() GenerateEmbeddingsFunc {
 			f(&req)
 		}
 
-		body, err := o.stream(http.MethodPost, "/api/embeddings", req, 0, nil)
+		body, err := o.stream(http.MethodPost, "/api/embeddings", req, 512000, nil)
 		if err != nil {
 			return nil, err
 		}
